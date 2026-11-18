@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- plain HTTP only to godcaster and helix over the tailnet (WireGuard-encrypted); everything else HTTPS -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">100.122.226.90</domain>
+        <domain includeSubdomains="false">godcaster.tailae5ce.ts.net</domain>
+        <domain includeSubdomains="false">100.76.9.38</domain><!-- helix: cartpub, publishing to adam.curry.com -->
+    </domain-config>
+</network-security-config>
