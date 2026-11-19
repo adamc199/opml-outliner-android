@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>OPML Outliner</title>
+<style>
+  /* CurryCaster II's outline pane (renderer/index.html), sized for a phone */
+  html, body { height:100%; margin:0; }
+  body { font:15px system-ui, sans-serif; background:#f6f1ea; color:#1a1a1a; -webkit-tap-highlight-color:transparent; }
+  #app { height:100%; display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; gap:8px; padding:8px 10px; background:#efe7dc; border-bottom:1px solid #d5ccc0; }
+  #fname { flex:1; min-width:0; font-weight:600; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #where { font:11px ui-monospace,monospace; color:#7a6a55; }
+  button { background:#fff; color:#222; border:1px solid #c4b9a9; border-radius:6px; padding:8px 12px; font-size:14px; }
+  button:active { background:#e6ddd0; }
+  button:disabled { opacity:.45; }
+  #opath { display:none; }
+  #otree { flex:1; overflow:auto; font-size:15px; line-height:1.45; outline:none; background:#fffdf9; padding:8px 6px; min-height:0;
+           -webkit-user-select:none; user-select:none; }
+  .oline { display:flex; align-items:flex-start; gap:4px; padding:5px 4px; border-radius:4px; }
+  .oline.sel { background:#3b6ea5; color:#fff; }
+  .oline.sel a { color:#dbe9ff; }
+  .otw { width:26px; flex:0 0 26px; color:#6b6157; text-align:center; font-size:14px; line-height:1.5; }
+  .oline.leaf .otw { visibility:hidden; }
+  .otx { white-space:pre-wrap; word-break:break-word; flex:1; }
+  .otx.prose { color:#4a423a; font-size:14px; line-height:1.5; }
+  .oline.sel .otx.prose { color:#eaf1ff; }
+  .orule { height:0; border-top:1px dashed #c8bdac; margin:10px 6px; }
+  .orule.sel { border-top-color:#3b6ea5; }
+  .onone { padding:18px; color:#8a8074; }
+  .oline .oedit { flex:1; font:inherit; font-size:16px; padding:4px 6px; border:1px solid #3b6ea5; border-radius:4px;
+                  background:#fff; color:#1a1a1a; min-width:0; -webkit-user-select:text; user-select:text; }
+  .oempty { color:#a99; font-style:italic; }
+  .oconflict { background:#fff3cd; border:1px solid #e0b040; color:#4a3a08; border-radius:6px; padding:10px; margin:6px;
+               display:flex; flex-direction:column; gap:8px; font-size:14px; }
+  #ocount { display:none; }
+  /* touch toolbar: the keys a phone does not have */
+  #bar { display:flex; gap:4px; padding:6px; background:#efe7dc; border-top:1px solid #d5ccc0; overflow-x:auto; scrollbar-width:none; }
+  #bar::-webkit-scrollbar { display:none; }
+  #bar button { flex:0 0 auto; min-width:48px; padding:10px 10px; font-size:15px; }
+  #osave.primary { background:#3b6ea5; color:#fff; border-color:#3b6ea5; }
+  .hidden-ctl { display:none; }
+  /* the Files screen */
+  #files { position:fixed; inset:0; background:#f6f1ea; display:flex; flex-direction:column; z-index:5; }
+  #files[hidden] { display:none; }
+  #files .list { flex:1; overflow:auto; padding:6px 10px 20px; }
+  #files h3 { margin:16px 4px 6px; font-size:13px; letter-spacing:.06em; color:#7a6a55; text-transform:uppercase; }
+  .frow { display:flex; align-items:center; gap:10px; padding:11px 10px; background:#fffdf9; border:1px solid #e3d9cb;
+          border-radius:8px; margin:6px 0; }
+  .frow .fn { flex:1; min-width:0; }
+  .frow .fn b { display:block; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .frow .fn small { display:block; color:#7a6a55; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .frow.cur { border-color:#3b6ea5; }
+  .msg { color:#8a8074; padding:8px 6px; font-size:14px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin:6px 0; }
+  /* text dialog (Link, Paste as Nodes, godcaster address) */
+  #askdlg { border:1px solid #c4b9a9; border-radius:10px; background:#fffdf9; color:#1a1a1a; width:92vw; padding:0; }
+  #askdlg::backdrop { background:rgba(0,0,0,.35); }
+  #askdlg form { display:flex; flex-direction:column; gap:10px; padding:16px; }
+  #askdlg h3 { margin:0; font-size:16px; }
+  #askdlg input[type=text], #ask-area { background:#fff; color:#111; border:1px solid #c4b9a9; border-radius:6px; padding:9px; font-size:16px; }
+  #ask-area { width:100%; box-sizing:border-box; resize:vertical; min-height:200px; font:15px ui-monospace,monospace; }
+  .askrow { display:flex; gap:8px; justify-content:flex-end; }
+  .note { font-size:13px; color:#7a6a55; }
+  .otype { margin-left:6px; font-size:11px; color:#8a6d3b; background:#f3e6c8; border-radius:4px; padding:0 5px; }
+  .oline.sel .otype { color:#3b2a08; }
+  /* Publish + Open a published page + Line type */
+  #mddlg { border:1px solid #c4b9a9; border-radius:10px; background:#fffdf9; color:#1a1a1a; width:94vw; padding:0; }
+  #mddlg::backdrop { background:rgba(0,0,0,.35); }
+  #mddlg form { display:flex; flex-direction:column; gap:10px; padding:16px; }
+  #mddlg h3 { margin:0; font-size:16px; }
+  #mddlg label { display:flex; flex-direction:column; gap:4px; font-size:13px; color:#5a5148; }
+  #mddlg label.chk { flex-direction:row; align-items:center; gap:8px; color:#1a1a1a; font-size:15px; }
+  #mddlg input[type=checkbox] { width:22px; height:22px; }
+  #mddlg input[type=text] { background:#fff; color:#111; border:1px solid #c4b9a9; border-radius:6px; padding:9px; font-size:16px; }
+  #md-preview { font:12px/1.4 ui-monospace,monospace; height:32vh; overflow:auto; white-space:pre-wrap; word-break:break-word;
+                background:#f3ede4; border:1px solid #d5ccc0; border-radius:6px; padding:8px; margin:0; }
+  #md-note { white-space:pre-wrap; word-break:break-all; font-size:13px; }
+  #md-result a { color:#2a5db0; word-break:break-all; }
+  #mddlg .btns { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  #pubdlg, #pickdlg { border:1px solid #c4b9a9; border-radius:10px; background:#fffdf9; color:#1a1a1a; width:94vw; padding:0; }
+  #pubdlg::backdrop, #pickdlg::backdrop { background:rgba(0,0,0,.35); }
+  #pubdlg form, #pickdlg form { display:flex; flex-direction:column; gap:10px; padding:16px; }
+  #pubdlg h3, #pickdlg h3 { margin:0; font-size:16px; }
+  #pubdlg label { display:flex; flex-direction:column; gap:4px; font-size:13px; color:#5a5148; }
+  #pubdlg label.chk { flex-direction:row; align-items:center; gap:8px; color:#1a1a1a; font-size:15px; }
+  #pubdlg input[type=checkbox] { width:22px; height:22px; }
+  #pubdlg input[type=text], #pubdlg select, #pickdlg input, #pickdlg select { background:#fff; color:#111; border:1px solid #c4b9a9; border-radius:6px; padding:9px; font-size:16px; max-width:100%; }
+  #pick-list { min-height:50vh; }
+  #pub-note { white-space:pre-wrap; word-break:break-all; }
+  #pub-note.warn { color:#8a4b00; }
+  #pub-result a { color:#2a5db0; word-break:break-all; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <button id="bfiles" title="Files">☰ Files</button>
+    <div style="flex:1;min-width:0"><div id="fname">OPML Outliner</div><div id="where"></div></div>
+    <button id="osave" disabled>Saved</button>
+  </header>
+  <div id="opath"></div>
+  <div id="otree" tabindex="0"><div class="onone">Tap ☰ Files to open an outline.</div></div>
+  <div id="ocount"></div>
+  <div id="bar">
+    <button id="tedit" title="Edit the line (Esc)">✎ Edit</button>
+    <button id="tnew" title="New line below (Enter)">+ New</button>
+    <button id="tout" title="Outdent (Shift+Tab)">⇤</button>
+    <button id="tin" title="Indent (Tab)">⇥</button>
+    <button id="tup" title="Move up (Ctrl+U)">↑</button>
+    <button id="tdown" title="Move down (Ctrl+D)">↓</button>
+    <button id="tundo" title="Undo">Undo</button>
+    <button id="tredo" title="Redo">Redo</button>
+    <button id="olink" title="Add or change the link">Link</button>
+    <button id="opaste-nodes" title="Paste text as lines">Paste</button>
+    <button id="tpublish" title="Publish to adam.curry.com">Publish</button>
+    <button id="tmd" title="Save or publish as Markdown">Markdown</button>
+    <button id="ttype" title="Line type (cart's types)">Type</button>
+    <button id="tpicture" title="Insert a picture from the phone">Picture</button>
+    <button id="tattach" title="Attach a file (audio, image…)">Attach</button>
+    <button id="tinclude" title="Include another outline">Include</button>
+    <button id="oexpand" title="Open every line">Open all</button>
+    <button id="ocollapse" title="Close every line">Close all</button>
+    <button id="tdel" title="Delete the line">Delete</button>
+  </div>
+  <button id="oopen" class="hidden-ctl"></button><button id="onew" class="hidden-ctl"></button>
+</div>
+<section id="files" hidden>
+  <header><button id="fclose">✕</button><div id="fname2" style="flex:1;font-weight:600">Files</div><button id="frefresh">↻</button></header>
+  <div class="list">
+    <h3>Godcaster — recently opened</h3>
+    <div id="gclist"><div class="msg">Loading…</div></div>
+    <h3>This phone</h3>
+    <div class="row"><button id="fopen">Open a file…</button><button id="fnew">New outline…</button></div>
+    <div id="locallist"></div>
+    <h3>adam.curry.com</h3>
+    <div class="row"><button id="fpublished">Open a published page…</button></div>
+    <h3>Settings</h3>
+    <div class="row"><button id="fserver">Godcaster address…</button></div>
+  </div>
+</section>
+<dialog id="mddlg"><form method="dialog">
+  <h3>Markdown</h3>
+  <label>Title<input id="md-title" type="text" spellcheck="false"></label>
+  <pre id="md-preview"></pre>
+  <label class="chk" id="md-newrow" hidden><input id="md-new" type="checkbox"> Publish as a new post (new address)</label>
+  <div id="md-note"></div>
+  <div id="md-result" hidden></div>
+  <div class="btns">
+    <button id="md-cancel" value="cancel">Close</button>
+    <button id="md-save" type="button">Save to phone…</button>
+    <button id="md-pub" type="button">Publish to adam.curry.com</button>
+  </div>
+</form></dialog>
+<dialog id="askdlg"><form method="dialog">
+  <h3 id="ask-title"></h3><div id="ask-note" class="note" hidden></div>
+  <input id="ask-value" type="text" spellcheck="false" autocapitalize="off"><textarea id="ask-area" hidden></textarea>
+  <div class="askrow"><button id="ask-cancel" value="cancel" formnovalidate>Cancel</button><button id="ask-ok" value="ok">OK</button></div>
+</form></dialog>
+<dialog id="pubdlg"><form method="dialog">
+  <h3>Publish to adam.curry.com</h3>
+  <label>Title of the page <input id="pub-title" type="text" spellcheck="true"></label>
+  <label>Page <select id="pub-page"></select></label>
+  <label>Show link (optional) <input id="pub-redirect" type="text" spellcheck="false" autocapitalize="off" placeholder="for example 1914.noagendanotes.com"></label>
+  <label class="chk"><input id="pub-archive" type="checkbox"> Add this show to the No Agenda archive page</label>
+  <div id="pub-note" class="note"></div>
+  <div id="pub-result" class="note" hidden></div>
+  <div class="askrow"><button value="cancel" formnovalidate id="pub-cancel">Cancel</button><button id="pub-ok" value="ok">Publish</button></div>
+</form></dialog>
+<dialog id="pickdlg"><form method="dialog">
+  <h3 id="pick-title">Open a published page</h3>
+  <input id="pick-filter" type="text" placeholder="Type to filter" spellcheck="false" autocapitalize="off">
+  <select id="pick-list" size="12"></select>
+  <div class="askrow"><button value="cancel" formnovalidate>Cancel</button><button id="pick-ok" value="ok">Open</button></div>
+</form></dialog>
+<script type="module" src="app.js"></script>
+</body>
+</html>

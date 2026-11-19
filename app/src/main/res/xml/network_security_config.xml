@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- plain HTTP only to your own machines on a private network (e.g. Tailscale, WireGuard-encrypted); everything else HTTPS.
+         Put your outliner-sync host and publishing service here. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">your-outliner-sync-host</domain>
+        <domain includeSubdomains="false">your-publishing-service</domain>
+    </domain-config>
+</network-security-config>
